@@ -1,5 +1,5 @@
 ---
-id: ai_tools_and_effective_practices
+id: ai_tooling
 name: "AI: Tools and Effective Practices"
 courses: [
   careful_coding_with_copilots,
