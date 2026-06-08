@@ -27,7 +27,7 @@ You have been given a dataset to analyse. It comprises:
 
 The cells you'll be analysing have been engineered to glow. Two of the three proteins have been tagged with fluorescent dyes: one glows green in the body of the cell (the cytoplasm) and one glows red in the cell's nucleus. By imaging these cells over time, you can watch the fluorescence intensity rise and fall as the proteins are produced and degraded. The third protein has no marker, and as such we are blind to it.
 
-The reason for the oscillation is a feedback circuit called the "repressilator" (detailed in the paper in the `docs/` folder). Three proteins take turns suppressing each other's production in a cycle — protein A suppresses B, B suppresses C, and C suppresses A — which under certain conditions causes the amounts of each protein to oscillate rhythmically. The dynamics of this oscillation can be modelled using an [ordinary differential equation](https://train.rse.ox.ac.uk/material/HPCu/scientific_computing/essential_maths/14_system_1). The parameters for this equation (for example, the half-life of a protein), and the form of the differential equations, can be found in the docs folder. 
+The reason for the oscillation is a feedback circuit called the "repressilator" (detailed in the paper in the `docs/` folder). Three proteins take turns suppressing each other's production in a cycle — protein A suppresses B, B suppresses C, and C suppresses A — which under certain conditions causes the amounts of each protein to oscillate rhythmically. The dynamics of this oscillation can be modelled using an [ordinary differential equation]([scientific_computing]/[essential_maths]/[09_differential_equations_1]). The parameters for this equation (for example, the half-life of a protein), and the form of the differential equations, can be found in the docs folder. 
 
 Each cell circuit has slightly different parameter values. You are tasked with recovering the values of these parameters for a subset of the cell images. An LLM has been used to create an analysis pipeline, but it is not capable of achieving this aim. You are tasked with fixing the implementation. You can assess the success of this implementation by using the tests in the `tests/` folder.
 
@@ -109,10 +109,10 @@ Where LLMs go wrong, in my experience, is where the problem given is too broad. 
 
 Make sure you have installed
 - [git](https://git-scm.com/install/)
-- A GenAI command line interface tool such as [Codex](https://developers.openai.com/codex/cli) or [Claude Code](https://claude.com/product/claude-code), or integrated design environment such as [VSCode[(https://code.visualstudio.com/) that can use these services as a plugin
+- A GenAI command line interface tool such as [Codex](https://developers.openai.com/codex/cli) or [Claude Code](https://claude.com/product/claude-code), or integrated design environment such as [VSCode](https://code.visualstudio.com/) that can use these services as a plugin
 - [Python >3.9](https://www.python.org/downloads/)
 
-To get started please navigate to the [Repressilator_analysis repo](https://github.com/HOLL95/Repressilator_analysis), [fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo?tool=webui) the repo (requires a github account). In your terminal then run
+To get started please navigate to the [Repressilator_analysis repo](https://github.com/HOLL95/Repressilator_analysis), create a template repository (the green `use this template` button)  to obtain your own copy of the repo (requires a github account). In your terminal then run
 ```bash
 git clone https://github.com/<Your Gihub Username>/Repressilator_analysis
 ```
