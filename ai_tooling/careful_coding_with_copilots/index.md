@@ -1,3 +1,4 @@
+---
 name: Careful coding with copilots
 id: careful_coding_with_copilots
 dependsOn: [introductory_courses.python]
