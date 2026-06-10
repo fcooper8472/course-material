@@ -68,16 +68,18 @@ Plot the calibration data in the `docs/{protein_name}_calibration.txt` files.
 :::solution
 Add some diagnostic code to `test_calibration()`
 
-```python
-fig,ax=plt.subplots(1,2)
+```python nolint
+fig, ax = plt.subplots(1, 2)
 for i in range(0, len(calibrant_files)):
-    calibrator=ra.calibration.ProteinCalibration(calibrant_files[i], weights[i], header=1)#header to skip the table titles in the .txt files
+    calibrator = ra.calibration.ProteinCalibration(
+        calibrant_files[i], weights[i], header=1
+    )  # header to skip the table titles in the .txt files
     ax[i].scatter(calibrator.mass_ng, calibrator.fluorescence_au)
     ax[i].set_ylabel("A.U.")
     ax[i].set_xlabel("Mass ng")
     ax[i].set_title(calibrant_files[i])
-    #...Rest of script
-    #comment out the `assert` line for now, as it will throw an error
+    # ...Rest of script
+    # comment out the `assert` line for now, as it will throw an error
 plt.show()
 ```
 
@@ -94,35 +96,41 @@ Also place the LLM A.U. estimate on the graph, and print the values of both esti
 
 :::solution
 
-```python
+```python nolint
 # mass_in_g=molar mass*molecule_no/avogadro
-molar_mass=weights[i]*1000#kDa
-molecule_no=2000
-avogadro= 6.02214076e23
-mass_in_ng=(molar_mass*(molecule_no/avogadro))/1e-9
-#Fit a linear polynomial to the existing ng/A.u. data (need to import scipy.stats)
-slope, intercept, _,_,_ = stats.linregress(calibrator.mass_ng,calibrator.fluorescence_au)
-#Use the interpolation approach for comparison to find relationship between mass and A.U.
-ifunc=interpolate.interp1d(
-    calibrator.mass_ng,calibrator.fluorescence_au,
-    kind='linear',
-    fill_value='extrapolate'
+molar_mass = weights[i] * 1000  # kDa
+molecule_no = 2000
+avogadro = 6.02214076e23
+mass_in_ng = (molar_mass * (molecule_no / avogadro)) / 1e-9
+# Fit a linear polynomial to the existing ng/A.u. data (need to import scipy.stats)
+slope, intercept, _, _, _ = stats.linregress(
+    calibrator.mass_ng, calibrator.fluorescence_au
 )
-predicted_AU_linear=(mass_in_ng*slope)+intercept
-predicted_AU_interp=ifunc(mass_in_ng)
-ax[i].scatter(mass_in_ng, predicted_AU_linear, marker="x",color="black")
+# Use the interpolation approach for comparison to find relationship between mass and A.U.
+ifunc = interpolate.interp1d(
+    calibrator.mass_ng,
+    calibrator.fluorescence_au,
+    kind="linear",
+    fill_value="extrapolate",
+)
+predicted_AU_linear = (mass_in_ng * slope) + intercept
+predicted_AU_interp = ifunc(mass_in_ng)
+ax[i].scatter(mass_in_ng, predicted_AU_linear, marker="x", color="black")
 ax[i].scatter(mass_in_ng, predicted_AU_interp)
-print("regression AU estimate=",predicted_AU_linear, "interpolation AU estimate=",predicted_AU_interp)
+print(
+    "regression AU estimate=",
+    predicted_AU_linear,
+    "interpolation AU estimate=",
+    predicted_AU_interp,
+)
 ```
 
 We can see from the output that the interpolation function gives negative values when extrapolating outside of the normal range.
 ![Calibration data for the two proteins](figs/calib_method_compare.png)
 
-```python
-"""
+```text
 regression AU estimate= 21.194450844095943 interpolation AU estimate= -119.66665963355331
 regression AU estimate= 20.84870015170366 interpolation AU estimate= -10.733325757321154
-"""
 ```
 
 :::
@@ -136,34 +144,36 @@ Use an alternative approach, using the full dataset in the `docs/calibration` fi
 :::solution
 Let's first modify the`_load_calibration_file()` function to return the repeats without averaging
 
-```python
+```python nolint
 return mass_ng, repeats
 ```
 
 Now let's use linear regression as in the previous solution block to convert between AU and mass (this is the inverse of the operation in the previous solution block i.e. from au->mass)
 
-```python
-#In the `_init__()` function to replace the usage of interp1d
-slope, intercept, _,_,_ = stats.linregress(np.repeat(self.mass_ng,3), self.fluorescence_au.flatten())#concatenates the three repeats
-#pass gradient, intercept into class memory
-self.slope=slope
-self.intercept=intercept
+```python nolint
+# In the `_init__()` function to replace the usage of interp1d
+slope, intercept, _, _, _ = stats.linregress(
+    np.repeat(self.mass_ng, 3), self.fluorescence_au.flatten()
+)  # concatenates the three repeats
+# pass gradient, intercept into class memory
+self.slope = slope
+self.intercept = intercept
 ```
 
 we can then use these values in `pixel_intensities_to_molecules()`
 
-```python
-mass_ng = ((pixel_intensities-self.intercept) / self.slope) / CONVERSION_FACTOR
+```python nolint
+mass_ng = ((pixel_intensities - self.intercept) / self.slope) / CONVERSION_FACTOR
 ```
 
 This approach gives us some negative molecule counts, so we enforce 0 for all values under 0, i.e.
 
-```python
-if isinstance(molecules, np.ndarray): #vector
-    molecules[molecules<0]=0
-else: #scalar
-    if molecules<0:
-        molecules=0
+```python nolint
+if isinstance(molecules, np.ndarray):  # vector
+    molecules[molecules < 0] = 0
+else:  # scalar
+    if molecules < 0:
+        molecules = 0
 ```
 
 :::

@@ -71,12 +71,12 @@ First let's modify the test code to plot the protein numbers from `simulate()` v
 
 :::solution
 
-```python
-#before the assert block in `test_repressilator_simulation_class()`
+```python nolint
+# before the assert block in `test_repressilator_simulation_class()`
 plt.plot(test_time_seconds, test_nuclear_protein, color="red", label="Nuclear")
-plt.plot(test_time_seconds, values[:,0], color="red", linestyle="--")
+plt.plot(test_time_seconds, values[:, 0], color="red", linestyle="--")
 plt.plot(test_time_seconds, test_cytosol_protein, color="green", label="Cytosolic")
-plt.plot(test_time_seconds, values[:,1], color="green", linestyle="--")
+plt.plot(test_time_seconds, values[:, 1], color="green", linestyle="--")
 plt.xlabel("Time (s)")
 plt.ylabel("Protein number")
 plt.legend()
@@ -137,18 +137,20 @@ Let's change the simulation code to match the equations from the paper
 
 :::solution
 
-```python
+```python nolint
 def hill_repression(repressor_conc):
-    return alpha / (1 + (repressor_conc ** hill)) + alpha0
+    return alpha / (1 + (repressor_conc**hill)) + alpha0
+
+
 # mRNA dynamics
 dm1_dt = hill_repression(p3) - m1
-dm2_dt = hill_repression(p1) -  m2
-dm3_dt = hill_repression(p2) -  m3
+dm2_dt = hill_repression(p1) - m2
+dm3_dt = hill_repression(p2) - m3
 
 # Protein dynamics
-dp1_dt = beta * (m1 -  p1)
+dp1_dt = beta * (m1 - p1)
 dp2_dt = beta * (m2 - p2)
-dp3_dt = beta * (m3 -  p3)
+dp3_dt = beta * (m3 - p3)
 ```
 
 Changing the code in `simulate()` to use the correct expression doesn't change very much, but at least the equations are consistent!
@@ -156,10 +158,10 @@ Changing the code in `simulate()` to use the correct expression doesn't change v
 :::
 If you inspect the parameters in the `params_003.json` file
 
-```python
-#after `params` is loaded
+```python nolint
+# after `params` is loaded
 for key in params.keys():
-        print("{0}:{1}".format(key, params[key]))
+    print("{0}:{1}".format(key, params[key]))
 ```
 
 you will notice that there are more parameter values than included in the _param_names list. Update the code to incorporate these values, according to the description of their usage in box 1 in the paper. `initial_` values refer to the initial values of `m1-3` and `p1-3` (where `n_x_1` is `x1`, `n_x_2` is `x_2` and `c_x` is `x3`, where `x` is either `m` or `p`), and `T_e` refers to the translation efficiency of an mRNA molecule. You can assume that all the transcription factors act as monomers (which is relevant in the context of the `K_m` parameter). Furthermore, the differential equation model is only valid after using the [non-dimensionalisation](https://en.wikipedia.org/wiki/Nondimensionalization) procedure outlined in the Elowitz paper. Non-dimensionalisation rescales the variables so that the equations have no physical units; it simplifies the maths and means the parameters (such as α) end up as dimnesionless values rather than quantities with awkward units. The paper describes how to do this; the key effect on the code is that time must be rescaled and α must be converted before being passed to the solver.
@@ -167,49 +169,70 @@ you will notice that there are more parameter values than included in the _param
 :::solution
 First, we need to update _param_names so that it incorporates all the parameters in the `.json` file
 
-```python
-_param_names=[
-                    "hill",  #hill coefficient (same for all)
-                    "mrna_half_life", #half life of mRNA molecule (same for all)
-                    "p_half_life",  #half life of protein molecule (same for all)
-                    "K_m", #Number of protein monomers (in this case, the same as the no. of proteins) required to half-maximally repress transcription
-                    "T_e", #Transcription efficiency
-                    "initial_c_p", #initial values
-                    "initial_n_p_1", 
-                    "initial_n_p_2", 
-                    "initial_c_m", 
-                    "initial_n_m_1",
-                    "initial_n_m_2",
-                    "alpha", # rate of transcription in unrepressed promoter minus alpha0
-                    "alpha0"# rate of transcription in maximally repressed promoter
-                    ]
+```python nolint
+_param_names = [
+    "hill",  # hill coefficient (same for all)
+    "mrna_half_life",  # half life of mRNA molecule (same for all)
+    "p_half_life",  # half life of protein molecule (same for all)
+    "K_m",  # Number of protein monomers (in this case, the same as the no. of proteins) required to half-maximally repress transcription
+    "T_e",  # Transcription efficiency
+    "initial_c_p",  # initial values
+    "initial_n_p_1",
+    "initial_n_p_2",
+    "initial_c_m",
+    "initial_n_m_1",
+    "initial_n_m_2",
+    "alpha",  # rate of transcription in unrepressed promoter minus alpha0
+    "alpha0",  # rate of transcription in maximally repressed promoter
+]
 ```
 
 Then we need to incorporate these extra parameters into the model.
 
-```python
-#pass the extra parameters in (same order as _param_names)
-hill, mrna_half_life, p_half_life, K_m, T_e, initial_c_p, initial_n_p_1, initial_n_p_2, initial_c_m, initial_n_m_1, initial_n_m_2, alpha, alpha0=parameters
-#degradation_rate = ln(2) / half_life
-#mean lifetime= half_life/ln(2)
-p_decay=np.log(2)/p_half_life
-m_lifetime=mrna_half_life/np.log(2)
-#\beta as in the paper
-beta=mrna_half_life/p_half_life
-#\alpha Non dimensionalisation:
-#Reported alpha is transcript s^-1 cell^-1
-#K_m monomers cell^-1  
-#T_e protein transcript ^-1
-#p_decay min ^-1
-#(transcript/(cell*s)*(s)*(protein/transcript)*(cell/monomer)
-#For this exercise we're going to assume that the transcription repressors are all monomers, so monomer=protein. 
-#(transcript/(cell*s)*(s)*(protein/transcript)*(cell/protein)=1
-alpha=alpha*(60/p_decay)*T_e/K_m
-#alpha is now dimensionless
-alpha0*=alpha
-#Now maximal translation =alpha+alpha0
-y0 = [ initial_n_m_1, initial_n_m_2,initial_c_m, initial_n_p_1, initial_n_p_2, initial_c_p] 
-#Initial conditions are now modelled as a free parameter, rather than hard-coded
+```python nolint
+# pass the extra parameters in (same order as _param_names)
+(
+    hill,
+    mrna_half_life,
+    p_half_life,
+    K_m,
+    T_e,
+    initial_c_p,
+    initial_n_p_1,
+    initial_n_p_2,
+    initial_c_m,
+    initial_n_m_1,
+    initial_n_m_2,
+    alpha,
+    alpha0,
+) = parameters
+# degradation_rate = ln(2) / half_life
+# mean lifetime= half_life/ln(2)
+p_decay = np.log(2) / p_half_life
+m_lifetime = mrna_half_life / np.log(2)
+# \beta as in the paper
+beta = mrna_half_life / p_half_life
+# \alpha Non dimensionalisation:
+# Reported alpha is transcript s^-1 cell^-1
+# K_m monomers cell^-1
+# T_e protein transcript ^-1
+# p_decay min ^-1
+# (transcript/(cell*s)*(s)*(protein/transcript)*(cell/monomer)
+# For this exercise we're going to assume that the transcription repressors are all monomers, so monomer=protein.
+# (transcript/(cell*s)*(s)*(protein/transcript)*(cell/protein)=1
+alpha = alpha * (60 / p_decay) * T_e / K_m
+# alpha is now dimensionless
+alpha0 *= alpha
+# Now maximal translation =alpha+alpha0
+y0 = [
+    initial_n_m_1,
+    initial_n_m_2,
+    initial_c_m,
+    initial_n_p_1,
+    initial_n_p_2,
+    initial_c_p,
+]
+# Initial conditions are now modelled as a free parameter, rather than hard-coded
 ```
 
 This still isn't quite right, but at least it's oscillating
@@ -218,34 +241,37 @@ This still isn't quite right, but at least it's oscillating
 The rapid oscillation is because the time units still haven't been non-dimensionalised
 :::solution
 
-```python
-#"Time is rescaled in units of the mRNA lifetime"
-#Half lives are reported in minutes, so need to be converted to seconds, which is the unit of the input time
-nd_time=times/(m_lifetime*60)
+```python nolint
+# "Time is rescaled in units of the mRNA lifetime"
+# Half lives are reported in minutes, so need to be converted to seconds, which is the unit of the input time
+nd_time = times / (m_lifetime * 60)
+
+
 def repressilator_odes(y, t):
-            """ODE system for the Repressilator."""
-            m1, m2, m3, p1, p2, p3 = y
-            # Hill function for repression
-            def hill_repression(repressor_conc):
-                return alpha / (1 + (repressor_conc ** hill)) + alpha0
+    """ODE system for the Repressilator."""
+    m1, m2, m3, p1, p2, p3 = y
 
-            # mRNA dynamics
-            dm1_dt = hill_repression(p3) - m1
-            dm2_dt = hill_repression(p1) -  m2
-            dm3_dt = hill_repression(p2) -  m3
+    # Hill function for repression
+    def hill_repression(repressor_conc):
+        return alpha / (1 + (repressor_conc**hill)) + alpha0
 
-            # Protein dynamics
-            dp1_dt = beta * (m1 -  p1)
-            dp2_dt = beta * (m2 - p2)
-            dp3_dt = beta * (m3 -  p3)
+    # mRNA dynamics
+    dm1_dt = hill_repression(p3) - m1
+    dm2_dt = hill_repression(p1) - m2
+    dm3_dt = hill_repression(p2) - m3
 
-            return [dm1_dt, dm2_dt, dm3_dt, dp1_dt, dp2_dt, dp3_dt]
+    # Protein dynamics
+    dp1_dt = beta * (m1 - p1)
+    dp2_dt = beta * (m2 - p2)
+    dp3_dt = beta * (m3 - p3)
 
-        # Solve ODE system
-        solution = odeint(repressilator_odes, y0, nd_time)
+    return [dm1_dt, dm2_dt, dm3_dt, dp1_dt, dp2_dt, dp3_dt]
 
-        # As written here, we want n_p_1 (index 3) and c_p (index 5)
-        output = solution[:, [3, 5]]  # [p1, p2]
+    # Solve ODE system
+    solution = odeint(repressilator_odes, y0, nd_time)
+
+    # As written here, we want n_p_1 (index 3) and c_p (index 5)
+    output = solution[:, [3, 5]]  # [p1, p2]
 ```
 
 This looks like it might be about right but it's out by a constant factor?
@@ -255,8 +281,8 @@ In the previous solution block we're out by a constant factor; the differential 
 :::solution
 We just need to re-scale by the K_m value
 
-```python
- output = solution[:, [3, 5]]*K_m
+```python nolint
+output = solution[:, [3, 5]] * K_m0
 ```
 
 to get a simulation that looks pretty close, and that will pass the `assert` test
@@ -285,40 +311,41 @@ I also usually include the following
 
 The arguments to the function are as in the LLM implementation (although without optimiser choice)
 
-```python
+```python nolint
 def infer_parameters(
     times: np.ndarray,
     observations: np.ndarray,
-) :
+):
 ```
 
 and we setup the model in the same way
 
-```python
+```python nolint
 model = RepressilatorModel(times)
 ```
 
 The next step is to define boundaries for each parameter. The actual simulation values are centred around the values given in the paper in the `docs` folder
+
 :::solution
 
-```python
-#Defining boundaries for the new parameters in _param_names
+```python nolint
+# Defining boundaries for the new parameters in _param_names
 param_bounds = {
-      "hill": (1.0, 3.0),
-      "mrna_half_life": (1.0, 3.0),
-      "p_half_life": (5.0, 15.0),
-      "K_m": (20.0, 50.0),
-      "T_e": (20.0, 40.0),
-      "initial_c_p": (1.0, 50.0),
-      "initial_n_p_1": (1.0, 50.0),
-      "initial_n_p_2": (1.0, 50.0),
-      "initial_c_m": (5.0, 150.0),
-      "initial_n_m_1": (5.0, 150.0),
-      "initial_n_m_2": (5.0, 150.0),
-      "alpha": (0,1),
-      "alpha0": (0.0005, 0.002)
-  }
-#In the same order as required for simulation
+    "hill": (1.0, 3.0),
+    "mrna_half_life": (1.0, 3.0),
+    "p_half_life": (5.0, 15.0),
+    "K_m": (20.0, 50.0),
+    "T_e": (20.0, 40.0),
+    "initial_c_p": (1.0, 50.0),
+    "initial_n_p_1": (1.0, 50.0),
+    "initial_n_p_2": (1.0, 50.0),
+    "initial_c_m": (5.0, 150.0),
+    "initial_n_m_1": (5.0, 150.0),
+    "initial_n_m_2": (5.0, 150.0),
+    "alpha": (0, 1),
+    "alpha0": (0.0005, 0.002),
+}
+# In the same order as required for simulation
 lower_bounds = [param_bounds[name][0] for name in model._param_names]
 upper_bounds = [param_bounds[name][1] for name in model._param_names]
 ```
@@ -329,40 +356,41 @@ We then need to set up the optimiser
 
 :::solution
 
-```python
-score=1e23#Arbitrarily large initial value
-num_repeats=3#Some independent runs
-for i in range(0,3):
-    #pick a random point between min and max for each element in _param_names, changes with each repeat
-    x0 = [np.random.uniform(low=lower, high=upper, size=1)for lower, upper in zip(lower_bounds, upper_bounds)]
+```python nolint
+score = 1e23  # Arbitrarily large initial value
+num_repeats = 3  # Some independent runs
+for i in range(0, 3):
+    # pick a random point between min and max for each element in _param_names, changes with each repeat
+    x0 = [
+        np.random.uniform(low=lower, high=upper, size=1)
+        for lower, upper in zip(lower_bounds, upper_bounds)
+    ]
 
     # Create error measure
-    #To account for multiple columns
-    problem=pints.MultiOutputProblem(model,times, observations)
-    #Minimise squared error between simulations and data
-    error = pints.SumOfSquaresError(problem )
-    
+    # To account for multiple columns
+    problem = pints.MultiOutputProblem(model, times, observations)
+    # Minimise squared error between simulations and data
+    error = pints.SumOfSquaresError(problem)
+
     # Create boundaries
     boundaries = pints.RectangularBoundaries(lower_bounds, upper_bounds)
 
     # Run CMAES optimization
     opt = pints.OptimisationController(
-        error,
-        x0,
-        boundaries=boundaries,
-        method=pints.CMAES
+        error, x0, boundaries=boundaries, method=pints.CMAES
     )
-    #Will terminate when no change above 1e-1 for 200 iterations
+    # Will terminate when no change above 1e-1 for 200 iterations
     opt.set_max_unchanged_iterations(200, threshold=1e-1)
     opt.set_log_to_screen(True)
-    #For speed
+    # For speed
     opt.set_parallel(True)
     # Run optimization
     best_params, best_error = opt.run()
-    #If score value lower than current best, then save
-    if best_error<score:
-        score=best_error
-        params=best_params
+    # If score value lower than current best, then save
+    if best_error < score:
+        score = best_error
+        params = best_params
+
 return params  # outside the loop — returns the best result across all repeats
 ```
 

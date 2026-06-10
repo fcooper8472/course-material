@@ -53,11 +53,12 @@ python fluorescence_extractor_test.py
   - List of phase images provided by `load_timeseries`
   - Minimum cell area in pixels (set at 5)
 
-**Returns** Two arguments - the first is a dictionary where each key is a cell ID mapping to a list of tuples. The first element of each tuple is the timepoint ID, the second the currently assigned cell_id and the third element is the x,y centroid position.
+**Returns** Two arguments - the first is a dictionary where each key is a cell ID mapping to a list of tuples.
+The first element of each tuple is the timepoint ID, the second the currently assigned cell_id and the third element is the x,y centroid position.
 
-```python
+```python nolint
 #arg1, "tracks"
- {  # Dictionary
+{  # Dictionary
     "1": [  # track id 
         (time1, current_id, (centre_x,centre_y)),  # Tuple
         (time2, current_id, (centre_x,centre_y)),
@@ -105,18 +106,19 @@ Modify the code to plot the segmented image, showing the `cell_id` at each assig
 :::solution
 Adding code like this
 
-```python
-#You'll need to install and import pyplot (i.e. import matplotlib.pyplot as plt)
-#After the first assignment to `tracks` in `track_cells_across_time()`
+```python nolint
+# You'll need to install and import pyplot (i.e. import matplotlib.pyplot as plt)
+# After the first assignment to `tracks` in `track_cells_across_time()`
 fig, (ax_phase, ax_seg) = plt.subplots(1, 2, figsize=(12, 6))
-ax_phase.imshow(phase_images[0], cmap='gray')
-ax_phase.set_title('Phase image (timepoint 0)')
-ax_seg.imshow(labeled, cmap='nipy_spectral')
+ax_phase.imshow(phase_images[0], cmap="gray")
+ax_phase.set_title("Phase image (timepoint 0)")
+ax_seg.imshow(labeled, cmap="nipy_spectral")
 for track_id, track_list in tracks.items():
     _, _, (cy, cx) = track_list[0]
-    ax_seg.text(cx, cy, str(track_id), color='white', fontsize=12,
-            ha='center', va='center')
-ax_seg.set_title('Segmented cells at timepoint 0 (track IDs)')
+    ax_seg.text(
+        cx, cy, str(track_id), color="white", fontsize=12, ha="center", va="center"
+    )
+ax_seg.set_title("Segmented cells at timepoint 0 (track IDs)")
 plt.tight_layout()
 plt.show()
 ```
@@ -154,42 +156,64 @@ we can see that the merged cells still have distinct nuclei.
 Therefore, if we could identify regions that contain multiple nuclei, we could determine which cells need to be split.
 As the nuclei are much darker than the surrounding cells, we could re-threshold each connected region.
 
-```python
-#Modifying the code in the previous solution block (still in `track_cells_across_time()`)
- # Cast to greyscale
-gray0 = np.mean(phase_images[0], axis=2) if phase_images[0].ndim == 3 else phase_images[0].astype(float)
+```python nolint
+# Modifying the code in the previous solution block (still in `track_cells_across_time()`)
+# Cast to greyscale
+gray0 = (
+    np.mean(phase_images[0], axis=2)
+    if phase_images[0].ndim == 3
+    else phase_images[0].astype(float)
+)
 
 nuclei_per_region = {}
-for region in measure.regionprops(labeled): #Iterate through each connected region (i.e. given a discrete number in ax[1] above)
-    min_row, min_col, max_row, max_col = region.bbox #identify bounding box of region
-    local_phase = gray0[min_row:max_row, min_col:max_col] #address in image
-    local_mask = labeled[min_row:max_row, min_col:max_col] == region.label 
+for region in measure.regionprops(
+    labeled
+):  # Iterate through each connected region (i.e. given a discrete number in ax[1] above)
+    min_row, min_col, max_row, max_col = region.bbox  # identify bounding box of region
+    local_phase = gray0[min_row:max_row, min_col:max_col]  # address in image
+    local_mask = labeled[min_row:max_row, min_col:max_col] == region.label
     cell_pixels = local_phase[local_mask]
     if len(cell_pixels) < 10:
         continue
-    thresh2 = filters.threshold_otsu(cell_pixels) #second thresholding step
-    nucleus_mask = (local_phase < thresh2) & local_mask #In the image, the image is under the identified threshold AND part of the region
-    labeled2 = measure.label(nucleus_mask) #Count non-connected regions
-    nuclei_per_region[region.label] = labeled2.max() # Each is given an integer, so max() is the total number
+    thresh2 = filters.threshold_otsu(cell_pixels)  # second thresholding step
+    nucleus_mask = (
+        local_phase < thresh2
+    ) & local_mask  # In the image, the image is under the identified threshold AND part of the region
+    labeled2 = measure.label(nucleus_mask)  # Count non-connected regions
+    nuclei_per_region[region.label] = (
+        labeled2.max()
+    )  # Each is given an integer, so max() is the total number
 
 fig, (ax_phase, ax_seg) = plt.subplots(1, 2, figsize=(12, 6))
 
 # Left panel: raw phase image with per-cell nucleus count overlaid at each centroid
-ax_phase.imshow(phase_images[0], cmap='gray')
-for region in measure.regionprops(labeled): #(It's done the same process twice, which is inefficient but whatever)
-    if region.label in nuclei_per_region: #The region label was added to nuclei_per_region in the loop above, with the value being the number of nuclei
+ax_phase.imshow(phase_images[0], cmap="gray")
+for region in measure.regionprops(
+    labeled
+):  # (It's done the same process twice, which is inefficient but whatever)
+    if (
+        region.label in nuclei_per_region
+    ):  # The region label was added to nuclei_per_region in the loop above, with the value being the number of nuclei
         cy, cx = region.centroid
-        ax_phase.text(cx, cy, str(nuclei_per_region[region.label]), color='white', fontsize=12,
-                        ha='center', va='center') #plotting that number
-ax_phase.set_title('Phase image (timepoint 0)')
+        ax_phase.text(
+            cx,
+            cy,
+            str(nuclei_per_region[region.label]),
+            color="white",
+            fontsize=12,
+            ha="center",
+            va="center",
+        )  # plotting that number
+ax_phase.set_title("Phase image (timepoint 0)")
 
 # Right panel: segmented cells coloured by label, with assigned track ID at each centroid
-ax_seg.imshow(labeled, cmap='nipy_spectral')
+ax_seg.imshow(labeled, cmap="nipy_spectral")
 for track_id, track_list in tracks.items():
     _, _, (cy, cx) = track_list[0]
-    ax_seg.text(cx, cy, str(track_id), color='white', fontsize=12,
-            ha='center', va='center')
-ax_seg.set_title('Segmented cells at timepoint 0 (track IDs)')
+    ax_seg.text(
+        cx, cy, str(track_id), color="white", fontsize=12, ha="center", va="center"
+    )
+ax_seg.set_title("Segmented cells at timepoint 0 (track IDs)")
 plt.tight_layout()
 plt.show()
 ```
@@ -207,40 +231,47 @@ What information do we have that could help us draw a boundary between them? We 
 
 There are a number of segmentation algorithms - I've used the [watershed algorithm](https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html). We update the above code to include pertinent information when `n_nuclei>1`.
 
-```python
-#Modifying the code in the previous solution block (still in `track_cells_across_time()`)
-#You'll need to import `feature` and `color` from skimage for this to work
-regions_to_split={}
-nuclei_per_region={}
+```python nolint
+# Modifying the code in the previous solution block (still in `track_cells_across_time()`)
+# You'll need to import `feature` and `color` from skimage for this to work
+regions_to_split = {}
+nuclei_per_region = {}
 for region in measure.regionprops(labeled):
-        min_row, min_col, max_row, max_col = region.bbox
-        local_phase = gray0[min_row:max_row, min_col:max_col]
-        local_mask = labeled[min_row:max_row, min_col:max_col] == region.label
-        cell_pixels = local_phase[local_mask]
-        if len(cell_pixels) < 5:
-            continue
-        thresh2 = filters.threshold_otsu(cell_pixels)
-        binary2 = (local_phase < thresh2) & local_mask
-        labeled2 = measure.label(binary2)
-        n_nuclei = labeled2.max()
-        nuclei_per_region[region.label] = n_nuclei
-        #As in previous solution block
-        if n_nuclei > 1:
-            regions_to_split[region.label] = (region.bbox, binary2, local_mask, n_nuclei) #store extra details
+    min_row, min_col, max_row, max_col = region.bbox
+    local_phase = gray0[min_row:max_row, min_col:max_col]
+    local_mask = labeled[min_row:max_row, min_col:max_col] == region.label
+    cell_pixels = local_phase[local_mask]
+    if len(cell_pixels) < 5:
+        continue
+    thresh2 = filters.threshold_otsu(cell_pixels)
+    binary2 = (local_phase < thresh2) & local_mask
+    labeled2 = measure.label(binary2)
+    n_nuclei = labeled2.max()
+    nuclei_per_region[region.label] = n_nuclei
+    # As in previous solution block
+    if n_nuclei > 1:
+        regions_to_split[region.label] = (
+            region.bbox,
+            binary2,
+            local_mask,
+            n_nuclei,
+        )  # store extra details
 
     # Watershed-split each merged region, updating `labeled` in-place.
     next_label = labeled.max() + 1
     for region_label, (bbox, binary2, local_mask, n_nuclei) in regions_to_split.items():
         min_row, min_col, max_row, max_col = bbox
         distance = ndimage.distance_transform_edt(binary2)
-        coords = feature.peak_local_max(distance, footprint=np.ones((3, 3)), labels=binary2)
+        coords = feature.peak_local_max(
+            distance, footprint=np.ones((3, 3)), labels=binary2
+        )
         if len(coords) == 0:
             continue
         markers = np.zeros(distance.shape, dtype=int)
         for i, coord in enumerate(coords, start=1):
             markers[tuple(coord)] = i
         ws_labels = segmentation.watershed(-distance, markers, mask=local_mask)
-        #As in skimage tutorial
+        # As in skimage tutorial
         local_view = labeled[min_row:max_row, min_col:max_col]
         local_view[local_mask] = 0
         for sub_id in np.unique(ws_labels):
@@ -248,13 +279,13 @@ for region in measure.regionprops(labeled):
                 continue
             local_view[ws_labels == sub_id] = next_label
             next_label += 1
-        #for diagnostic plots
-        #I'm pretty sure "labeled" was changed by reference above, which I don't like particularly, but it's fine for diagnostics
+        # for diagnostic plots
+        # I'm pretty sure "labeled" was changed by reference above, which I don't like particularly, but it's fine for diagnostics
     fig, ax_phase = plt.subplots()
     #  phase image with watershed segments as solid colour blocks overlaid
     phase_norm = gray0 / gray0.max() if gray0.max() > 0 else gray0
     ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4))
-    ax_phase.set_title('Phase image (timepoint 0)')  
+    ax_phase.set_title("Phase image (timepoint 0)")
     plt.tight_layout()
     plt.show()
 ```
@@ -272,8 +303,10 @@ Let's try and diagnose the issue
 
 The first problem is that we have more segments than cells. However, we know the number of segments we want - it's n_nuclei. We can update the peak finding function call accordingly
 
-```python
-coords = feature.peak_local_max(distance, footprint=np.ones((3, 3)), labels=binary2, num_peaks=n_nuclei)
+```python nolint
+coords = feature.peak_local_max(
+    distance, footprint=np.ones((3, 3)), labels=binary2, num_peaks=n_nuclei
+)
 ```
 
 This gets us a result that's a bit better, but still not perfect
@@ -283,12 +316,12 @@ This gets us a result that's a bit better, but still not perfect
 Some of the segmentations are cutting the nuclei in half.
 Let's see what the watershed algorithm actually starts from
 
-```python
-#In the segmentation loop
+```python nolint
+# In the segmentation loop
 fig, ax = plt.subplots()
-ax.imshow(gray0[min_row:max_row, min_col:max_col], cmap='gray')
-ax.scatter(coords[:, 1], coords[:, 0], c='red', s=20, marker='+', linewidths=1)
-ax.set_title(f'Region {region_label} peaks')
+ax.imshow(gray0[min_row:max_row, min_col:max_col], cmap="gray")
+ax.scatter(coords[:, 1], coords[:, 0], c="red", s=20, marker="+", linewidths=1)
+ax.set_title(f"Region {region_label} peaks")
 plt.show()
 ```
 
@@ -298,8 +331,14 @@ We can see that the peak maximums are sometimes next to each other.
 
 Fortunately, we can pass another argument to `peak_local_max` to prevent this
 
-```python
-coords = feature.peak_local_max(distance, footprint=np.ones((3, 3)), labels=binary2, num_peaks=n_nuclei, min_distance=3)
+```python nolint
+coords = feature.peak_local_max(
+    distance,
+    footprint=np.ones((3, 3)),
+    labels=binary2,
+    num_peaks=n_nuclei,
+    min_distance=3,
+)
 ```
 
 :::
@@ -310,11 +349,15 @@ Up to this point in the solution blocks, we've got a sequence of steps that does
 
 At this point, I've changed the data structure to make it easier for myself to understand
 
-```python
-#Modifying code in the previous solution block#
-gray0 = np.mean(phase_images[0], axis=2) if phase_images[0].ndim == 3 else phase_images[0].astype(float)
-cell_atlas = [] # new data structure
-cell_id = 0 
+```python nolint
+# Modifying code in the previous solution block#
+gray0 = (
+    np.mean(phase_images[0], axis=2)
+    if phase_images[0].ndim == 3
+    else phase_images[0].astype(float)
+)
+cell_atlas = []  # new data structure
+cell_id = 0
 next_label = labeled.max() + 1
 for region in measure.regionprops(labeled):
     min_row, min_col, max_row, max_col = region.bbox
@@ -327,58 +370,83 @@ for region in measure.regionprops(labeled):
     thresh2 = filters.threshold_otsu(cell_pixels)
     nucleus_mask = (local_phase < thresh2) & local_mask
     n_nuclei = measure.label(nucleus_mask).max()
-    #As in previous solution
+    # As in previous solution
 
-    if n_nuclei > 1: #Too many nuclei i.e. need further segmentation
-        distance = ndimage.distance_transform_edt(nucleus_mask) #As for the skimage watershed segmentation example
-        coords = feature.peak_local_max(distance, footprint=np.ones((3, 3)), 
-                                        labels=nucleus_mask, #Start the segmentation from the nuclei
-                                        num_peaks=n_nuclei, #We know how many segments we want (number of nuclei), so preset it
-                                        min_distance=3,#Prevent the same nuclei being used as the segmentation start point twice
-                                        )
+    if n_nuclei > 1:  # Too many nuclei i.e. need further segmentation
+        distance = ndimage.distance_transform_edt(
+            nucleus_mask
+        )  # As for the skimage watershed segmentation example
+        coords = feature.peak_local_max(
+            distance,
+            footprint=np.ones((3, 3)),
+            labels=nucleus_mask,  # Start the segmentation from the nuclei
+            num_peaks=n_nuclei,  # We know how many segments we want (number of nuclei), so preset it
+            min_distance=3,  # Prevent the same nuclei being used as the segmentation start point twice
+        )
         if len(coords) == 0:
             continue
         markers = np.zeros(distance.shape, dtype=int)
         for i, coord in enumerate(coords, start=1):
             markers[tuple(coord)] = i
         ws_labels = segmentation.watershed(-distance, markers, mask=local_mask)
-        ws_centroids = {p.label: p.centroid for p in measure.regionprops(ws_labels)}# Get the centres for test compatibility
-        #This is all as in the skimage watershed tutorial
-        local_view = labeled[min_row:max_row, min_col:max_col] #For diagnostic plotting
+        ws_centroids = {
+            p.label: p.centroid for p in measure.regionprops(ws_labels)
+        }  # Get the centres for test compatibility
+        # This is all as in the skimage watershed tutorial
+        local_view = labeled[
+            min_row:max_row, min_col:max_col
+        ]  # For diagnostic plotting
         local_view[local_mask] = 0
         for ws_label in range(1, ws_labels.max() + 1):
-            local_ws_mask = ws_labels == ws_label #Extract the mask for each watershed segment one at a time
-            local_view[local_ws_mask] = next_label #For diagnostic plotting
+            local_ws_mask = (
+                ws_labels == ws_label
+            )  # Extract the mask for each watershed segment one at a time
+            local_view[local_ws_mask] = next_label  # For diagnostic plotting
             cy, cx = ws_centroids[ws_label]
             next_label += 1
-            cell_atlas.append({ #Save the cell_id, segment mask, nucleus mask and image bounding box
+            cell_atlas.append(
+                {  # Save the cell_id, segment mask, nucleus mask and image bounding box
+                    "cell_id": cell_id,
+                    "bbox": bbox,
+                    "cell_mask": local_ws_mask,  # watershed segment
+                    "nucleus_mask": nucleus_mask
+                    & local_ws_mask,  # intersection of watershed segment and nucleus mask
+                    "centre": (
+                        min_row + cy,
+                        min_col + cx,
+                    ),  # Get the centre for test compatibility
+                }
+            )
+            cell_id += 1
+    else:  # 1 nucleus
+        ys, xs = np.where(local_mask)
+        cell_atlas.append(
+            {  # Saving the same data as above
                 "cell_id": cell_id,
                 "bbox": bbox,
-                "cell_mask": local_ws_mask,#watershed segment
-                "nucleus_mask": nucleus_mask & local_ws_mask, #intersection of watershed segment and nucleus mask
-                "centre": (min_row + cy, min_col + cx), #Get the centre for test compatibility
-            })
-            cell_id += 1
-    else: #1 nucleus
-        ys, xs = np.where(local_mask)
-        cell_atlas.append({ #Saving the same data as above
-            "cell_id": cell_id,
-            "bbox": bbox,
-            "cell_mask": local_mask,
-            "nucleus_mask": nucleus_mask,
-            "centre": (min_row + float(ys.mean()), min_col + float(xs.mean())),
-        })
+                "cell_mask": local_mask,
+                "nucleus_mask": nucleus_mask,
+                "centre": (min_row + float(ys.mean()), min_col + float(xs.mean())),
+            }
+        )
         cell_id += 1
     #  phase image with watershed segments overlaid, annotated with cell_id
-fig,ax_phase=plt.subplots()
+fig, ax_phase = plt.subplots()
 phase_norm = gray0 / gray0.max() if gray0.max() > 0 else gray0
-ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4)) 
+ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4))
 for entry in cell_atlas:
-    min_row, min_col, max_row, max_col = entry['bbox']
-    ys, xs = np.where(entry['cell_mask']) #Number goes in centre of bbox
-    ax_phase.text(min_col + xs.mean(), min_row + ys.mean(), str(entry['cell_id']), #Now using the ID from cell_atlas
-                color='white', fontsize=12, ha='center', va='center')
-ax_phase.set_title('Phase image (timepoint 0)')
+    min_row, min_col, max_row, max_col = entry["bbox"]
+    ys, xs = np.where(entry["cell_mask"])  # Number goes in centre of bbox
+    ax_phase.text(
+        min_col + xs.mean(),
+        min_row + ys.mean(),
+        str(entry["cell_id"]),  # Now using the ID from cell_atlas
+        color="white",
+        fontsize=12,
+        ha="center",
+        va="center",
+    )
+ax_phase.set_title("Phase image (timepoint 0)")
 plt.show()
 ```
 
@@ -386,23 +454,29 @@ plt.show()
 
 Which looks like it's worked. Let's move all the processing code to `segment_cells`
 
-```python
+```python nolint
 def segment_cells(args):
-    #Rest of the code in here
+    # Rest of the code in here
     return labeled, cell_atlas
 ```
 
 And update the calls to segement cells i.e
 
-```python
-#In `track_cells_across_time()`
-#Timepoint 0
+```python nolint
+# In `track_cells_across_time()`
+# Timepoint 0
 labeled, cell_atlas = segment_cells(phase_images[0], min_cell_area)
-#Update the `tracks` structure from `cell_atlas`
+# Update the `tracks` structure from `cell_atlas`
 for i in range(0, len(cell_atlas)):
-        tracks[i] = [(0, cell_atlas[i]["cell_id"],(cell_atlas[i]["centre"][0], cell_atlas[i]["centre"][1]))]
-#In the t loop, also update the call to `segment_cells()`. We'll make everything play nice together later. 
-curr_labels,cell_atlas = segment_cells(phase_images[t], min_cell_area)
+    tracks[i] = [
+        (
+            0,
+            cell_atlas[i]["cell_id"],
+            (cell_atlas[i]["centre"][0], cell_atlas[i]["centre"][1]),
+        )
+    ]
+# In the t loop, also update the call to `segment_cells()`. We'll make everything play nice together later.
+curr_labels, cell_atlas = segment_cells(phase_images[t], min_cell_area)
 ```
 
 It hasn't completely fixed the issue, but we've got a different error message now.
@@ -427,17 +501,32 @@ Briefly modify the test code (i.e `test_track_cells()`) to diagnose the error.
 
 :::solution
 
-```python
-#Just before the error check (i.e. `raise ValueError(f"At the first timepoint, {num_errors} cell centres have been assigned incorrectly")`)
-phase_display =test_images['phase_images'][0]                                                                                    
-fig, ax = plt.subplots(figsize=(10, 10))                                                                                                                           
-ax.imshow(phase_display, cmap='gray')                                                                                                                              
-ax.scatter(positions[:, 1], positions[:, 0], c='lime', s=30, label='correct', marker='o', zorder=3)                                                          
-ax.scatter([t["centre"][1] for t in tracks[0]], [t["centre"][0] for t in tracks[0]],                                                                               
-        c='red', s=30, label='assigned', marker='x', zorder=3)                                                                                                  
-ax.legend()                                                                                                                                                        
-ax.set_title('Phase image t=0: correct (green) vs assigned (red)')                                                                                                 
-plt.show() 
+```python nolint
+# Just before the error check (i.e. `raise ValueError(f"At the first timepoint, {num_errors} cell centres have been assigned incorrectly")`)
+phase_display = test_images["phase_images"][0]
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(phase_display, cmap="gray")
+ax.scatter(
+    positions[:, 1],
+    positions[:, 0],
+    c="lime",
+    s=30,
+    label="correct",
+    marker="o",
+    zorder=3,
+)
+ax.scatter(
+    [t["centre"][1] for t in tracks[0]],
+    [t["centre"][0] for t in tracks[0]],
+    c="red",
+    s=30,
+    label="assigned",
+    marker="x",
+    zorder=3,
+)
+ax.legend()
+ax.set_title("Phase image t=0: correct (green) vs assigned (red)")
+plt.show()
 ```
 
 This is what the output should look like when the error isn't thrown
@@ -470,21 +559,28 @@ Briefly add some diagnostic plotting code to the test function to show the phase
 
 :::solution
 
-```python
-#This is in `fluorescence_extractor_test.py`
-#just after the `if mapping.get(cell_id) != true_idx` check
+```python nolint
+# This is in `fluorescence_extractor_test.py`
+# just after the `if mapping.get(cell_id) != true_idx` check
 fig, axes = plt.subplots(1, 2, figsize=(14, 7))
 for ax, t_idx, t_tracks, title in [
     (axes[0], i - 1, tracks[i - 1], f"t={i-1}"),
-    (axes[1], i,     tracks[i],     f"t={i}"),
+    (axes[1], i, tracks[i], f"t={i}"),
 ]:
     ax.imshow(phase_images[t_idx], cmap="gray")
     ax.set_title(title)
     for cell in t_tracks:
         cy, cx = cell["centre"]
         color = "yellow"
-        ax.text(cx, cy, str(cell["cell_id"]), color=color,
-                fontsize=12, ha="center", va="center")
+        ax.text(
+            cx,
+            cy,
+            str(cell["cell_id"]),
+            color=color,
+            fontsize=12,
+            ha="center",
+            va="center",
+        )
 fig.suptitle(
     f"Mismatch: cell_id {cell_id} assigned true_idx {true_idx}, "
     f"expected {expected_true_idx}"
@@ -515,8 +611,8 @@ The key insights are:
 3. However, if we optimise this value individually for each "centre" (i.e. a greedy approach) there will be conflicts (e.g. a centre at t being close to two plausible centres at t-1)
 4. So we actually want to find the best compromise. This is also known as minimum weight bipartite matching, and is very nicely implemented in `scipy.optimize.linear_sum_assignment`, which you'll need to import. Each cell at t-1 must be paired with exactly one cell at t, and we want the pairing that minimises the total distance travelled across all cells, as opposed to greedily matching each cell to its nearest neighbour, which can cause conflicts.
 
-```python
-#In the loop of `track_cells_across_time()`
+```python nolint
+# In the loop of `track_cells_across_time()`
 cell_id_to_track_id = {entry["cell_id"]: i for i, entry in enumerate(cell_atlas)}
 prev_atlas = cell_atlas
 for t in range(1, len(phase_images)):
@@ -537,18 +633,32 @@ for t in range(1, len(phase_images)):
     # Map matched current cell_ids to the same track as their previous counterpart
     new_cell_id_to_track_id = {}
     for r, c in zip(row_ind, col_ind):
-        track_id = cell_id_to_track_id[prev_atlas[r]["cell_id"]] #look up track from previous cell_id
-        tracks[track_id].append((t, cell_atlas[c]["cell_id"], tuple(cell_atlas[c]["centre"])))
-        new_cell_id_to_track_id[cell_atlas[c]["cell_id"]] = track_id #register current cell_id under same track
+        track_id = cell_id_to_track_id[
+            prev_atlas[r]["cell_id"]
+        ]  # look up track from previous cell_id
+        tracks[track_id].append(
+            (t, cell_atlas[c]["cell_id"], tuple(cell_atlas[c]["centre"]))
+        )
+        new_cell_id_to_track_id[cell_atlas[c]["cell_id"]] = (
+            track_id  # register current cell_id under same track
+        )
     matched_cols = set(col_ind)
-        for j, curr in enumerate(cell_atlas):
-            if j not in matched_cols:
-                tracks[next_track_id] = [(t, curr["cell_id"], tuple(curr["centre"]),
-                                          curr["bbox"], curr["nucleus_mask"], curr["cell_mask"])]
-                new_cell_id_to_track_id[curr["cell_id"]] = next_track_id
-                next_track_id += 1
+    for j, curr in enumerate(cell_atlas):
+        if j not in matched_cols:
+            tracks[next_track_id] = [
+                (
+                    t,
+                    curr["cell_id"],
+                    tuple(curr["centre"]),
+                    curr["bbox"],
+                    curr["nucleus_mask"],
+                    curr["cell_mask"],
+                )
+            ]
+            new_cell_id_to_track_id[curr["cell_id"]] = next_track_id
+            next_track_id += 1
 
-    cell_id_to_track_id = new_cell_id_to_track_id #update map for next iteration
+    cell_id_to_track_id = new_cell_id_to_track_id  # update map for next iteration
     prev_atlas = cell_atlas
 ```
 
@@ -569,37 +679,53 @@ Rewrite to use `cell_mask`, etc. keys from the previous solution. If you're not 
 
 In `track_cells_across_time()`
 
-```python
-#at t=0, we're now also passing the bounding box, nuclear mask and cell mask assigned to each cell
-tracks[i] = [(0, entry["cell_id"], (entry["centre"][0], entry["centre"][1]),
-                      entry["bbox"], entry["nucleus_mask"], entry["cell_mask"])]
-#...
-#at t=1,2,...
+```python nolint
+# at t=0, we're now also passing the bounding box, nuclear mask and cell mask assigned to each cell
+tracks[i] = [
+    (
+        0,
+        entry["cell_id"],
+        (entry["centre"][0], entry["centre"][1]),
+        entry["bbox"],
+        entry["nucleus_mask"],
+        entry["cell_mask"],
+    )
+]
+# ...
+# at t=1,2,...
 curr = cell_atlas[c]
-tracks[track_id].append((t, curr["cell_id"], tuple(curr["centre"]),
-                            curr["bbox"], curr["nucleus_mask"], curr["cell_mask"]))
+tracks[track_id].append(
+    (
+        t,
+        curr["cell_id"],
+        tuple(curr["centre"]),
+        curr["bbox"],
+        curr["nucleus_mask"],
+        curr["cell_mask"],
+    )
+)
 ```
 
 In `test_track_cells()`
 
-```python
+```python nolint
 results = ra.fluorescence_extraction.extract_nuclear_cytoplasmic(
-            intensity_images[i],
-            tracks[i],
-        )
-#we're now passing the `tracks` data structure rather than a series of labelled imaged, which we can now process in `extract_nuclear_cytoplasmic()`
+    intensity_images[i],
+    tracks[i],
+)
+# we're now passing the `tracks` data structure rather than a series of labelled imaged, which we can now process in `extract_nuclear_cytoplasmic()`
 ```
 
 :::
 Modify `extract_nuclear_cytoplasmic()` to check which sections of the intensity image are having their fluorescence values extracted.
 :::solution
 
-```python
+```python nolint
 def extract_nuclear_cytoplasmic(
     intensity_image: np.ndarray,
-    track_entries: List[dict], #Now it's the tracks data structure
-    nuclear_channel: str = 'red',
-    cytoplasmic_channel: str = 'green',
+    track_entries: List[dict],  # Now it's the tracks data structure
+    nuclear_channel: str = "red",
+    cytoplasmic_channel: str = "green",
 ) -> List[Dict[str, float]]:
     """
     Extract nuclear and cytoplasmic fluorescence for each cell.
@@ -617,39 +743,45 @@ def extract_nuclear_cytoplasmic(
         List of dictionaries with keys 'nuclear' and 'cytoplasmic' containing
         mean fluorescence intensities for each cell
     """
-    channel_map = {'red': 0, 'green': 1, 'blue': 2}
+    channel_map = {"red": 0, "green": 1, "blue": 2}
     nuclear_idx = channel_map[nuclear_channel.lower()]
     cyto_idx = channel_map[cytoplasmic_channel.lower()]
-    #diagnostics
+    # diagnostics
     nuclear_mask_full = np.zeros(intensity_image.shape[:2], dtype=bool)
     cyto_mask_full = np.zeros(intensity_image.shape[:2], dtype=bool)
     results = []
     for i in range(0, len(track_entries)):
-        #Extracting the bbox and masks
-        bbox=track_entries[i]["bbox"]
-        cell_mask=track_entries[i]["cell_mask"]
-        nucleus_mask=track_entries[i]["nucleus_mask"]
+        # Extracting the bbox and masks
+        bbox = track_entries[i]["bbox"]
+        cell_mask = track_entries[i]["cell_mask"]
+        nucleus_mask = track_entries[i]["nucleus_mask"]
         min_row, min_col, max_row, max_col = bbox
-        #Converting the bbox to the full image co-ordinates
+        # Converting the bbox to the full image co-ordinates
         local_intensity = intensity_image[min_row:max_row, min_col:max_col]
-        #Excluding the nucleus from the cells mask
+        # Excluding the nucleus from the cells mask
         cyto_mask = cell_mask & ~nucleus_mask
-        #Extraction (only using the one channel)
+        # Extraction (only using the one channel)
         nuclear_pixels = local_intensity[:, :, nuclear_idx][nucleus_mask]
         cyto_pixels = local_intensity[:, :, cyto_idx][cyto_mask]
-        #Diagnostics
+        # Diagnostics
         nuclear_mask_full[min_row:max_row, min_col:max_col] |= nucleus_mask
         cyto_mask_full[min_row:max_row, min_col:max_col] |= cyto_mask
 
-        results.append({
-            'nuclear': float(np.mean(nuclear_pixels)) if nuclear_pixels.size > 0 else 0.0,
-            'cytoplasmic': float(np.mean(cyto_pixels)) if cyto_pixels.size > 0 else 0.0,
-        })
+        results.append(
+            {
+                "nuclear": (
+                    float(np.mean(nuclear_pixels)) if nuclear_pixels.size > 0 else 0.0
+                ),
+                "cytoplasmic": (
+                    float(np.mean(cyto_pixels)) if cyto_pixels.size > 0 else 0.0
+                ),
+            }
+        )
 
     img_norm = intensity_image.astype(float)
     if img_norm.max() > 0:
         img_norm /= img_norm.max()
-    #Just looking at the maps
+    # Just looking at the maps
     nuclear_display = img_norm.copy()
     nuclear_display[~nuclear_mask_full] = 0.5
 
@@ -658,16 +790,16 @@ def extract_nuclear_cytoplasmic(
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     axes[0].imshow(img_norm)
-    axes[0].set_title('Intensity image')
-    axes[0].axis('off')
+    axes[0].set_title("Intensity image")
+    axes[0].axis("off")
 
     axes[1].imshow(nuclear_display)
-    axes[1].set_title('Nuclear regions')
-    axes[1].axis('off')
+    axes[1].set_title("Nuclear regions")
+    axes[1].axis("off")
 
     axes[2].imshow(cyto_display)
-    axes[2].set_title('Cytoplasmic regions')
-    axes[2].axis('off')
+    axes[2].set_title("Cytoplasmic regions")
+    axes[2].axis("off")
 
     plt.tight_layout()
     plt.show()
@@ -691,12 +823,12 @@ Looking at the diagnostic image from the previous solution block
 
 The cells are clearly outlined in green, but in the definition of `extract_nuclear_cytoplasmic()`
 
-```python
+```python nolint
 def extract_nuclear_cytoplasmic(
     intensity_image: np.ndarray,
     track_entries: List[Tuple],
-    nuclear_channel: str = 'green',
-    cytoplasmic_channel: str = 'red',
+    nuclear_channel: str = "green",
+    cytoplasmic_channel: str = "red",
 ) -> List[Dict[str, float]]:
 ```
 
@@ -717,18 +849,25 @@ As before, let's write some code to catch what's happening. This is occuring in 
 
 If following along from previous solution blocks, this goes in `segment_cells()`
 
-```python
-if cell_id>80:#Only want this to fire when too many nuceli have been found
-    fig,ax_phase=plt.subplots()
-    gray0=phase_image
+```python nolint
+if cell_id > 80:  # Only want this to fire when too many nuceli have been found
+    fig, ax_phase = plt.subplots()
+    gray0 = phase_image
     phase_norm = gray0 / gray0.max() if gray0.max() > 0 else gray0
-    ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4)) 
+    ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4))
     for entry in cell_atlas:
-        min_row, min_col, max_row, max_col = entry['bbox']
-        ys, xs = np.where(entry['cell_mask']) #Number goes in centre of bbox
-        ax_phase.text(min_col + xs.mean(), min_row + ys.mean(), str(entry['cell_id']), #Now using the ID from cell_atlas
-                    color='white', fontsize=12, ha='center', va='center')
-    ax_phase.set_title('Phase image (timepoint 0)')
+        min_row, min_col, max_row, max_col = entry["bbox"]
+        ys, xs = np.where(entry["cell_mask"])  # Number goes in centre of bbox
+        ax_phase.text(
+            min_col + xs.mean(),
+            min_row + ys.mean(),
+            str(entry["cell_id"]),  # Now using the ID from cell_atlas
+            color="white",
+            fontsize=12,
+            ha="center",
+            va="center",
+        )
+    ax_phase.set_title("Phase image (timepoint 0)")
     plt.show()
 ```
 
@@ -744,15 +883,17 @@ Write some code to determine what is happening before this error.
 
 You can place this in the segmentation loop
 
-```python
+```python nolint
 fig, axes = plt.subplots(1, n_nuclei + 1, figsize=(4 * (n_nuclei + 1), 4))
-axes[0].imshow(local_phase, cmap='gray') # local bbox region
-axes[0].imshow(nucleus_mask, alpha=0.4, cmap='Greens') #nucleus mask
-axes[0].set_title(f'cell {cell_id}: combined nucleus mask')
+axes[0].imshow(local_phase, cmap="gray")  # local bbox region
+axes[0].imshow(nucleus_mask, alpha=0.4, cmap="Greens")  # nucleus mask
+axes[0].set_title(f"cell {cell_id}: combined nucleus mask")
 for nuc_idx in range(1, n_nuclei + 1):
-    axes[nuc_idx].imshow(local_phase, cmap='gray')
-    axes[nuc_idx].imshow(ws_labels == nuc_idx, alpha=0.4, cmap='Reds') # plotting the appropriate segmentation
-    axes[nuc_idx].set_title(f'nucleus {nuc_idx}')
+    axes[nuc_idx].imshow(local_phase, cmap="gray")
+    axes[nuc_idx].imshow(
+        ws_labels == nuc_idx, alpha=0.4, cmap="Reds"
+    )  # plotting the appropriate segmentation
+    axes[nuc_idx].set_title(f"nucleus {nuc_idx}")
 plt.tight_layout()
 plt.show()
 ```
@@ -760,8 +901,10 @@ plt.show()
 If this is happening at later timepoints, you can control which timepoint you start on by reducing the range of the test_images["phase_images"] list (this can cause other errors, but it's fine for debugging the segmentation code)
 e.g.:
 
-```python
-tracks=ra.fluorescence_extraction.track_cells_across_time(test_images["phase_images"][6:8], 5)
+```python nolint
+tracks = ra.fluorescence_extraction.track_cells_across_time(
+    test_images["phase_images"][6:8], 5
+)
 ```
 
 If you keep on clicking through the cells, you'll eventually get something like this:
@@ -774,7 +917,7 @@ Create a fix for the error
 :::solution
 The fix is pretty easy:
 
-```python
+```python nolint
 nucleus_mask = morphology.remove_small_objects(nucleus_mask, max_size=min_cell_area)
 nucleus_mask = morphology.remove_small_holes(nucleus_mask, max_size=min_cell_area)
 ```
@@ -790,18 +933,25 @@ We're still having segmentation problems!
 
 Again, let's try and find which part of the segmentation code is breaking to cause this error. The initial diagnosis is identical to the previous solution:
 
-```python
-if cell_id<80:#Only want this to fire when too many nuceli have been found
-    fig,ax_phase=plt.subplots()
-    gray0=phase_image
+```python nolint
+if cell_id < 80:  # Only want this to fire when too many nuceli have been found
+    fig, ax_phase = plt.subplots()
+    gray0 = phase_image
     phase_norm = gray0 / gray0.max() if gray0.max() > 0 else gray0
-    ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4)) 
+    ax_phase.imshow(color.label2rgb(labeled, image=phase_norm, bg_label=0, alpha=0.4))
     for entry in cell_atlas:
-        min_row, min_col, max_row, max_col = entry['bbox']
-        ys, xs = np.where(entry['cell_mask']) #Number goes in centre of bbox
-        ax_phase.text(min_col + xs.mean(), min_row + ys.mean(), str(entry['cell_id']), #Now using the ID from cell_atlas
-                    color='white', fontsize=12, ha='center', va='center')
-    ax_phase.set_title('Phase image (timepoint 0)')
+        min_row, min_col, max_row, max_col = entry["bbox"]
+        ys, xs = np.where(entry["cell_mask"])  # Number goes in centre of bbox
+        ax_phase.text(
+            min_col + xs.mean(),
+            min_row + ys.mean(),
+            str(entry["cell_id"]),  # Now using the ID from cell_atlas
+            color="white",
+            fontsize=12,
+            ha="center",
+            va="center",
+        )
+    ax_phase.set_title("Phase image (timepoint 0)")
     plt.show()
 ```
 
@@ -824,10 +974,11 @@ Error 1:
 
 :::solution
 
-```python
-#Clear border objects (cells touching image edge)
+```python nolint
+# Clear border objects (cells touching image edge)
 """We just comment out the below line to stop the border clear"""
-#labeled = segmentation.clear_border(labeled)
+
+# labeled = segmentation.clear_border(labeled)
 ```
 
 :::
@@ -837,14 +988,14 @@ Diagnose the source of the second error
 :::solution
 This one is a bit trickier. First, let's just catch why the two cells aren't being segmented properly.
 
-```python
-#after the segmentation code, under conditions where n_nuclei==1
+```python nolint
+# after the segmentation code, under conditions where n_nuclei==1
 fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-axes[0].imshow(local_phase, cmap='gray')
-axes[0].set_title(f'cell {cell_id}: phase')
-axes[1].imshow(local_phase, cmap='gray')
-axes[1].imshow(nucleus_mask, alpha=1, cmap='Greens')
-axes[1].set_title(f'cell {cell_id}: nucleus mask')
+axes[0].imshow(local_phase, cmap="gray")
+axes[0].set_title(f"cell {cell_id}: phase")
+axes[1].imshow(local_phase, cmap="gray")
+axes[1].imshow(nucleus_mask, alpha=1, cmap="Greens")
+axes[1].set_title(f"cell {cell_id}: nucleus mask")
 plt.tight_layout()
 plt.show()
 ```
@@ -860,12 +1011,12 @@ Write some code to catch this error
 :::solution
 Eccentricity measures how elongated a shape is (0 = perfect circle, 1 = a straight line). Two nuclei that are just touching will appear as a single elongated blob, so a high eccentricity can be used to detect two touching nuclei.
 
-```python
-#as a check before deciding whether to segment or not
+```python nolint
+# as a check before deciding whether to segment or not
 labeled_nuclei = measure.label(nucleus_mask)
 for nuc_prop in measure.regionprops(labeled_nuclei):
-    if nuc_prop.eccentricity > 0.71:# Determined with a bit of trial and error!
-        n_nuclei += 1 #This means the cell will be passed to the n_nuclei>1 branch, and is important for the num_peaks keyword
+    if nuc_prop.eccentricity > 0.71:  # Determined with a bit of trial and error!
+        n_nuclei += 1  # This means the cell will be passed to the n_nuclei>1 branch, and is important for the num_peaks keyword
 ```
 
 (this is a little hacky, in that it doesn't account for what happens if you have three or more colliding nuclei, but it works for now!)
