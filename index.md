@@ -9,7 +9,6 @@ themes: [
   high_performance_computing,
   introductory_courses,
   scientific_computing,
-  data_science,
   libraries,
   cloud_computing,
 ]
